@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VITALIS · Prueba de Poisson (χ²)</title>
+  <link rel="stylesheet" href="css/style.css?v=2" />
+  <style>
+    .audit-main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) 1.2fr;
+      gap: 14px;
+      padding: 14px 18px;
+      align-items: start;
+    }
+    .audit-main .panel { margin: 0; }
+    .audit-main .span-full { grid-column: 1 / -1; }
+    .audit-kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .audit-kpi {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .audit-kpi span { display: block; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .audit-kpi label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .verdict { margin-top: 12px; padding: 12px 14px; border-radius: 10px; font-size: 13.5px; line-height: 1.5; border: 1px solid var(--border); }
+    .verdict.ok { background: rgba(46,204,113,.12); border-color: rgba(46,204,113,.5); color: #b6f0cf; }
+    .verdict.bad { background: rgba(231,76,60,.12); border-color: rgba(231,76,60,.5); color: #ffc3ba; }
+    .verdict.warn { background: rgba(241,196,15,.12); border-color: rgba(241,196,15,.45); color: #ffe9a8; }
+    .audit-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .audit-table th, .audit-table td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); }
+    .audit-table th:first-child, .audit-table td:first-child { text-align: left; }
+    .audit-table th { color: var(--muted); font-weight: 600; }
+    .audit-table tfoot td { font-weight: 700; color: var(--text); }
+    .chart-box { height: 300px; }
+    @media (max-width: 900px) { .audit-main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">🧪</div>
+      <div>
+        <h1>Prueba de Poisson</h1>
+        <p>Contraste χ² de bondad de ajuste sobre las llamadas de la corrida · VITALIS (Rol C)</p>
+      </div>
+    </div>
+    <div class="top-status">
+      <a class="btn" href="index.html">↩ Volver al simulador</a>
+    </div>
+  </header>
+
+  <main class="audit-main">
+    <section class="panel">
+      <h2>⚙️ Configuración del contraste</h2>
+      <div class="grid">
+        <label>Ventana de observación Δ (min)
+          <input type="number" id="a-window" value="10" min="1" step="1" />
+        </label>
+      </div>
+      <div class="btn-row">
+        <button id="a-run" class="btn accent">🔄 Analizar corrida</button>
+      </div>
+      <p id="a-msg" class="msg"></p>
+      <p class="hint">La página toma el histograma agregado de la corrida (<code>/api/audit/poisson</code>), agrupa las llegadas en ventanas de Δ minutos y compara el histograma observado con el esperado de un proceso de Poisson (λ̂ estimado de los propios datos). El dataset completo vive en disco, así que la memoria no depende del nº de llamadas.</p>
+      <div id="a-summary"></div>
+      <div id="a-verdict"></div>
+    </section>
+
+    <section class="panel">
+      <h2>📊 Distribución observada vs esperada</h2>
+      <div class="chart-box"><canvas id="a-chart"></canvas></div>
+    </section>
+
+    <section class="panel span-full">
+      <h2>📋 Detalle del test</h2>
+      <div id="a-detail"><p class="hint">Sin datos todavía.</p></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Proyecto Final · Modelos de Simulación (8.°) · UNINTEP — Alternativa 3: Despacho de Emergencias Médicas
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="js/poisson.js?v=3"></script>
+</body>
+</html>

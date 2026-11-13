@@ -1,0 +1,43 @@
+# --- Python / entorno virtual ---
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+dist/
+
+# --- Cachés de Python y herramientas ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Configuración local / secretos ---
+.env
+.env.*
+!.env.example
+
+# --- Logs ---
+*.log
+
+# --- Artefactos de desarrollo no incluidos en la entrega ---
+Makefile
+repomix-output.xml
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# --- Editor / SO ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

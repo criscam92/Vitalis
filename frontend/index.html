@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VITALIS · Despacho de Emergencias Médicas</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css?v=2" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">🚑</div>
+      <div>
+        <h1>VITALIS</h1>
+        <p>Sistema Logístico y de Despacho de Emergencias Médicas · Simulación híbrida (eventos discretos + dinámica continua)</p>
+      </div>
+    </div>
+    <div class="top-status">
+      <span id="phase-badge" class="badge idle">DETENIDA</span>
+      <span class="chip">T = <b id="sim-clock">0.0</b> min</span>
+      <span class="chip">Semilla: <b id="seed-value">—</b></span>
+      <span class="chip live" id="ws-indicator" title="Streaming en vivo por WebSocket">● en vivo</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <section class="panel">
+        <h2>⚙️ Parámetros de simulación</h2>
+        <div class="grid">
+          <label>Semilla (PRNG) <input type="number" id="p-seed" value="20261007" /></label>
+          <label>Llamadas λ (por min) <input type="number" id="p-lambda" value="0.15" step="0.01" min="0.01" /></label>
+          <label>Velocidad (km/h) <input type="number" id="p-speed" value="42" min="1" /></label>
+          <label>Coef. de tráfico <input type="number" id="p-traffic" value="1" step="0.1" min="0.1" /></label>
+          <label>Tiempo en escena (min) <input type="number" id="p-load" value="6" min="1" /></label>
+          <label>Radio de ciudad (km) <input type="number" id="p-radius" value="6" min="1" /></label>
+          <label>Reloj (min/seg real) <input type="number" id="p-clock" value="1" step="0.5" min="0.1" /></label>
+        </div>
+        <div class="btn-row">
+          <button id="btn-start" class="btn primary">▶ Iniciar</button>
+          <button id="btn-pause" class="btn">⏸ Pausar</button>
+          <button id="btn-resume" class="btn">⏵ Reanudar</button>
+        </div>
+        <div class="btn-row">
+          <button id="btn-reset" class="btn warn">↺ Nueva semilla</button>
+          <button id="btn-step" class="btn">⏭ +5 min</button>
+        </div>
+        <button id="btn-apply" class="btn accent full">🔥 Aplicar parámetros EN CALIENTE</button>
+        <p id="param-msg" class="msg"></p>
+      </section>
+
+      <section class="panel">
+        <h2>📍 Ciudad y hospitales (bases)</h2>
+        <div class="grid">
+          <label>Centro lat <input type="number" id="p-center-lat" step="any" value="4.41361" /></label>
+          <label>Centro lng <input type="number" id="p-center-lng" step="any" value="-76.1547" /></label>
+        </div>
+        <div id="bases-editor" class="bases-editor"></div>
+        <div class="btn-row">
+          <button id="btn-add-base" class="btn">➕ Añadir base</button>
+          <button id="btn-clic-base" class="btn" title="Haz clic en el mapa donde quieras crear la base: usa sus lat/lng exactos">📍 <span id="clic-label">Clic en el mapa</span></button>
+          <button id="btn-apply-bases" class="btn accent">💾 Aplicar ciudad y bases</button>
+        </div>
+        <p class="hint">Cada base puede ser <b>hospital</b> (recibe traslados) o <b>estación</b> de ambulancias. Debe existir al menos un hospital.</p>
+        <p class="hint">🖱️ Activa <b>«Clic en el mapa»</b> y haz clic en el punto deseado: se creará una nueva base con esa lat/lng exacta (Esc para salir del modo).</p>
+      </section>
+
+      <section class="panel">
+        <h2>📊 Indicadores (KPIs)</h2>
+        <div class="kpi-grid">
+          <div class="kpi"><span id="kpi-total">0</span><label>Llamadas</label></div>
+          <div class="kpi"><span id="kpi-served">0</span><label>Atendidas</label></div>
+          <div class="kpi"><span id="kpi-waiting">0</span><label>En espera</label></div>
+          <div class="kpi"><span id="kpi-active">0</span><label>En curso</label></div>
+          <div class="kpi"><span id="kpi-util">0%</span><label>Ocupación flota</label></div>
+          <div class="kpi"><span id="kpi-busy">0/0</span><label>Unidades activas</label></div>
+          <div class="kpi"><span id="kpi-avg-wait">0.0</span><label>Espera prom (min)</label></div>
+          <div class="kpi"><span id="kpi-avg-response">0.0</span><label>Respuesta prom (min)</label></div>
+          <div class="kpi"><span id="kpi-avg-total">0.0</span><label>Total prom (min)</label></div>
+          <div class="kpi"><span id="kpi-avg-queue">0.0</span><label>Cola prom (min)</label></div>
+          <div class="kpi"><span id="kpi-max-queue">0</span><label>Cola máxima</label></div>
+        </div>
+        <table class="sev-table">
+          <thead>
+            <tr><th>Gravedad</th><th>Lleg.</th><th>Atend.</th><th>Espera</th><th>Resp.</th></tr>
+          </thead>
+          <tbody id="sev-tbody">
+            <tr><td colspan="5" class="muted">Sin datos</td></tr>
+          </tbody>
+        </table>
+        <div id="bases-list" class="bases-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>📜 Auditoría estadística</h2>
+        <button id="btn-dataset" class="btn full">💾 Descargar CSV (dataset)</button>
+        <button id="btn-poisson" class="btn accent full">🧪 Prueba de Poisson</button>
+        <p class="hint">Descarga el registro completo de llamadas de la corrida (se guarda en disco, en <code>data/vitalis_audit.db</code>, así que puedes dejarla correr indefinidamente sin agotar la memoria) o abre la página de contraste estadístico (χ² de bondad de ajuste a un proceso de Poisson).</p>
+      </section>
+
+      <section class="panel">
+        <h2>🗺️ Leyenda</h2>
+        <ul class="legend">
+          <li><span class="dot" style="background:#e74c3c"></span> Rojo — crítica</li>
+          <li><span class="dot" style="background:#e67e22"></span> Naranja — urgente</li>
+          <li><span class="dot" style="background:#f1c40f"></span> Amarillo — moderada</li>
+          <li><span class="dot" style="background:#2ecc71"></span> Verde — leve</li>
+          <li><span class="dot amb"></span> Ambulancia (anillo = estado)</li>
+          <li><span class="dot" style="background:#2ecc71">🏥</span> Hospital (atiende pacientes)</li>
+          <li><span class="dot" style="background:#f1c40f">🏠</span> Estación de despacho (no atiende)</li>
+          <li class="muted">🗺️ Mapa base: cambiar con el selector (arriba a la derecha)</li>
+        </ul>
+        <p class="hint">El mapa dibuja hasta <b>150</b> llamadas en espera (las más urgentes) para mantener fluida la animación; los KPIs, la gráfica y el CSV contabilizan <b>todas</b>.</p>
+        <p class="hint">Anillo de la ambulancia: <b class="c-idle">libre</b> · <b class="c-move">en camino</b> · <b class="c-scene">en escena</b> · <b class="c-hosp">traslado</b></p>
+      </section>
+    </aside>
+
+    <section class="map-panel">
+      <div id="map"></div>
+      <div class="charts">
+        <div class="chart-box">
+          <h3>Tiempos por llamada (respuesta y total)</h3>
+          <canvas id="chart-responses"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Llamadas por nivel de gravedad</h3>
+          <canvas id="chart-severity"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Proyecto Final · Modelos de Simulación (8.°) · UNINTEP — Alternativa 3: Sistema Logístico y de Despacho de Emergencias Médicas
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="js/api.js?v=2"></script>
+  <script src="js/map.js?v=2"></script>
+  <script src="js/dashboard.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
+</body>
+</html>
